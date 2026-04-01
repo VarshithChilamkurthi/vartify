@@ -18,7 +18,11 @@ export class NotFoundError extends ApiError {
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const baseUrl = "";
+  const isServer = typeof window === "undefined";
+
+  const baseUrl = isServer
+    ? process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3002"
+    : "";
 
   const response = await fetch(`${baseUrl}${url}`, {
     method: "GET",
@@ -31,7 +35,10 @@ async function fetchJson<T>(url: string): Promise<T> {
       throw new NotFoundError();
     }
 
-    throw new ApiError(`Request failed with status ${response.status}`, response.status);
+    throw new ApiError(
+      `Request failed with status ${response.status}`,
+      response.status
+    );
   }
 
   return (await response.json()) as T;
