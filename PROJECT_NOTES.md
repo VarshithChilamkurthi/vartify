@@ -288,3 +288,7 @@ Below:
 
 Goal:
 Connect UI interactions to player store.
+
+7. Search:
+
+- Initially the search just returned the list with lowest quality. But i changed the quality to max. Did the change in songs/route.ts

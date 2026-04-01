@@ -6,20 +6,21 @@ import { usePlayerStore, selectCurrentTrack } from "@/store/playerStore";
 export function PlayerExpanded() {
   const currentTrack = usePlayerStore(selectCurrentTrack);
   const isExpanded = usePlayerStore((s) => s.isExpanded);
-  const toggleExpanded = usePlayerStore((s) => s.toggleExpanded);
+  const collapse = usePlayerStore((s) => s.collapse);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
 
-  // ✅ ESC to close
+  // ESC closes expanded player only (does not toggle back open)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        toggleExpanded();
+      if (e.key !== "Escape") return;
+      if (usePlayerStore.getState().isExpanded) {
+        collapse();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleExpanded]);
+  }, [collapse]);
 
   if (!isExpanded || !currentTrack) return null;
 
@@ -44,11 +45,12 @@ export function PlayerExpanded() {
         
         {/* Close button */}
         <button
-  onClick={toggleExpanded}
-  className="fixed top-6 right-6 z-50 rounded-full bg-black/60 px-3 py-1 text-sm text-white hover:bg-black/80"
->
-  ✕
-</button>
+          type="button"
+          onClick={collapse}
+          className="fixed top-6 right-6 z-50 rounded-full bg-black/60 px-3 py-1 text-sm text-white hover:bg-black/80"
+        >
+          ✕
+        </button>
 
         {/* Album Art */}
         <div className="w-80 h-80 mb-10 rounded-2xl overflow-hidden shadow-2xl">

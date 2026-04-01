@@ -40,8 +40,11 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function getAlbums(): Promise<Album[]> {
-  return fetchJson<Album[]>("/api/albums");
+export async function getAlbums(): Promise<{
+  albums: Album[];
+  hasMore: boolean;
+}> {
+  return fetchJson<{ albums: Album[]; hasMore: boolean }>("/api/albums");
 }
 
 export async function getAlbumById(id: string): Promise<Album> {

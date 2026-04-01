@@ -19,6 +19,9 @@ type PlayerActions = {
   setVolume: (volume: number) => void;
   setCurrentIndex: (index: number) => void;
   toggleExpanded: () => void;
+  expand: () => void;
+  collapse: () => void;
+  playQueue: (tracks: Track[], startIndex: number) => void;
 };
 
 function clampVolume(v: number): number {
@@ -36,6 +39,14 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
     set((s) => ({ isExpanded: !s.isExpanded }));
   },
 
+  expand: () => {
+    set({ isExpanded: true });
+  },
+
+  collapse: () => {
+    set({ isExpanded: false });
+  },
+
   setCurrentIndex: (index) => {
     set({ currentIndex: index });
   },
@@ -46,6 +57,17 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
       return;
     }
     set({ queue: tracks, currentIndex: 0, isPlaying: true });
+  },
+
+  playQueue: (tracks, startIndex) => {
+    if (!tracks.length) {
+      set({ queue: [], currentIndex: -1, isPlaying: false });
+      return;
+    }
+
+    const safeIndex = Math.max(0, Math.min(startIndex, tracks.length - 1));
+
+    set({ queue: tracks, currentIndex: safeIndex, isPlaying: true });
   },
 
   playTrack: (track) => {
@@ -63,8 +85,8 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
   if (currentIndex < queue.length - 1) {
     set({ currentIndex: currentIndex + 1, isPlaying: true });
   } else {
-    // ✅ LAST TRACK → STOP playback
-    set({ isPlaying: false });
+    // loop back to start
+    set({ currentIndex: 0, isPlaying: true });
   }
 },
 

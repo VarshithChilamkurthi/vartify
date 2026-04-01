@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Album, Track } from "@/lib/types/music";
+import { decodeHtmlEntities } from "@/lib/server/utils";
 
 type LinkObject = {
   quality?: string;
@@ -82,7 +83,7 @@ function extractAlbumArtist(data: Record<string, unknown>, songsRaw: unknown[]):
             return "";
           }
           const maybeName = (artist as { name?: unknown }).name;
-          return typeof maybeName === "string" ? maybeName : "";
+          return typeof maybeName === "string" ? decodeHtmlEntities(maybeName) : "";
         })
         .filter(Boolean);
 
@@ -112,7 +113,7 @@ function mapTrack(song: unknown): Track | null {
 
   const raw = song as Record<string, unknown>;
   const id = typeof raw.id === "string" ? raw.id : "";
-  const name = typeof raw.name === "string" ? raw.name : "";
+  const name = typeof raw.name === "string" ? decodeHtmlEntities(raw.name) : "";
   const duration = toNumber(raw.duration);
   const audioUrl = extractBestUrl(raw.downloadUrl);
 
@@ -139,7 +140,7 @@ export function mapAlbumResponse(payload: unknown): Album | null {
   }
 
   const id = typeof data.id === "string" ? data.id : "";
-  const name = typeof data.name === "string" ? data.name : "";
+  const name = typeof data.name === "string" ? decodeHtmlEntities(data.name) : "";
   const image = extractBestUrl(data.image);
 
   const songsRaw = Array.isArray(data.songs) ? data.songs : [];

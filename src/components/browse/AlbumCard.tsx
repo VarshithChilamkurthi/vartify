@@ -5,7 +5,7 @@ export function AlbumCard({ album }: { album: Album }) {
   return (
     <Link
       href={`/album/${album.id}`}
-      className="group block rounded-xl border border-white/5 bg-neutral-900/30 p-3 transition-all duration-300 ease-in-out hover:border-white/20 hover:bg-neutral-800/40 hover:scale-105 hover:shadow-2xl active:scale-95"
+      className="group block rounded-xl border border-white/5 bg-neutral-900/30 p-3 shadow-sm transition-all duration-300 ease-out hover:border-white/15 hover:bg-neutral-800/50 hover:shadow-lg hover:shadow-black/40 hover:scale-[1.02] active:scale-[0.99]"
     >
       <div className="relative aspect-square rounded-lg overflow-hidden">
         
@@ -13,7 +13,7 @@ export function AlbumCard({ album }: { album: Album }) {
         <img
           src={album.image}
           alt={album.name}
-          className="h-full w-full object-cover transition-all duration-300 ease-in-out group-hover:scale-105 group-hover:brightness-110"
+          className="h-full w-full object-cover transition-all duration-300 ease-out group-hover:scale-[1.03] group-hover:brightness-110"
           loading="lazy"
         />
 
@@ -36,10 +36,10 @@ export function AlbumCard({ album }: { album: Album }) {
       </div>
 
       <div className="mt-3 space-y-1">
-        <div className="line-clamp-1 text-sm font-semibold text-white/95">
+        <div className="line-clamp-1 text-sm font-semibold tracking-tight text-white">
           {album.name}
         </div>
-        <div className="line-clamp-1 text-xs text-white/60">
+        <div className="line-clamp-1 text-xs text-white/50">
           {album.artist}
         </div>
       </div>

@@ -33,12 +33,20 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query") || "Attack on Titan";
+    const page = Number(searchParams.get("page")) || "1";
+    const limit = 10;
     
-    const payload = await fetchSaavn(`/search/albums?query=${encodeURIComponent(query)}&limit=10`);
+    const payload = await fetchSaavn(`/search/albums?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
     const items = getSearchItems(payload);
     const albums = items.map(mapAlbumSearchItem).filter((album): album is NonNullable<typeof album> => album !== null);
 
-    return NextResponse.json(albums, { status: 200 });
+    return NextResponse.json(
+      {
+        albums,
+        hasMore: albums.length > 0,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     if (error instanceof ExternalApiError) {
       return NextResponse.json(

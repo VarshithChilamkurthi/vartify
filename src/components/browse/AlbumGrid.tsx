@@ -2,9 +2,16 @@ import type { Album } from "@/lib/types/music";
 
 import { AlbumCard } from "./AlbumCard";
 
-export function AlbumGrid({ albums }: { albums: Album[] }) {
+type AlbumGridProps = {
+  albums: Album[];
+  className?: string;
+};
+
+export function AlbumGrid({ albums, className = "" }: AlbumGridProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:gap-6">
+    <div
+      className={`grid grid-cols-2 gap-5 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4 lg:gap-8 ${className}`}
+    >
       {albums.map((album) => (
         <AlbumCard key={album.id} album={album} />
       ))}

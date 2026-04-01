@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Album } from "@/lib/types/music";
 
+import { decodeHtmlEntities } from "@/lib/server/utils";
 type LinkObject = {
   quality?: string;
   link?: string;
@@ -55,7 +56,7 @@ function extractArtist(raw: Record<string, unknown>): string {
             return "";
           }
           const maybeName = (artist as { name?: unknown }).name;
-          return typeof maybeName === "string" ? maybeName : "";
+          return typeof maybeName === "string" ? decodeHtmlEntities(maybeName) : "";
         })
         .filter(Boolean);
 
@@ -66,7 +67,7 @@ function extractArtist(raw: Record<string, unknown>): string {
   }
 
   const fallback = raw.primaryArtists ?? raw.artist;
-  return typeof fallback === "string" ? fallback : "";
+  return typeof fallback === "string" ? decodeHtmlEntities(fallback) : "";
 }
 
 export function mapAlbumSearchItem(item: unknown): Album | null {
@@ -77,7 +78,7 @@ export function mapAlbumSearchItem(item: unknown): Album | null {
   const raw = item as Record<string, unknown>;
 
   const id = typeof raw.id === "string" ? raw.id : "";
-  const name = typeof raw.name === "string" ? raw.name : "";
+  const name = typeof raw.name === "string" ? decodeHtmlEntities(raw.name) : "";
   const artist = extractArtist(raw);
   const image = extractBestUrl(raw.image);
 
