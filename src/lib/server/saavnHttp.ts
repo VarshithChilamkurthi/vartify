@@ -35,6 +35,8 @@ export async function fetchSaavn(path: string): Promise<unknown> {
       headers: {
         "Accept": "application/json",
         "User-Agent": "Mozilla/5.0",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.jiosaavn.com/",
       },
       cache: "no-store",
       signal: controller.signal,

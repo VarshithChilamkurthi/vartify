@@ -3,22 +3,7 @@ import type { Album, Track } from "@/lib/types/music";
 import { SongsList } from "@/components/search/SongsList";
 import { SearchResultsClient } from "@/components/search/SearchResultsClient";
 import { PlayAllButton } from "@/components/search/PlayAllButton";
-
-async function getAlbums(query: string): Promise< { albums: Album[], hasMore: boolean }> {
-  const res = await fetch(
-    `http://localhost:3002/api/albums?query=${encodeURIComponent(query)}`,
-    { cache: "no-store" }
-  );
-  return res.json();
-}
-
-async function getSongs(query: string): Promise<Track[]> {
-  const res = await fetch(
-    `http://localhost:3002/api/songs?query=${encodeURIComponent(query)}`,
-    { cache: "no-store" }
-  );
-  return res.json();
-}
+import { getAlbums, getSongs } from "@/services/musicService";
 
 type Props = {
   searchParams: Promise<{
@@ -44,7 +29,9 @@ export default async function SearchPage({ searchParams }: Props) {
       hasMore = albumRes.hasMore;
       songs = songRes;
     }
-  } catch {}
+  } catch (err) {
+    console.error("Search page error:", err);
+  }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-10">

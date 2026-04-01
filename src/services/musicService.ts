@@ -1,4 +1,5 @@
 import type { Album } from "@/lib/types/music";
+import type { Track } from "@/lib/types/music";
 
 class ApiError extends Error {
   status: number;
@@ -19,10 +20,7 @@ export class NotFoundError extends ApiError {
 
 async function fetchJson<T>(url: string): Promise<T> {
   const isServer = typeof window === "undefined";
-
-  const baseUrl = isServer
-    ? process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3002"
-    : "";
+  const baseUrl = resolveInternalBaseUrl(isServer);
 
   const response = await fetch(`${baseUrl}${url}`, {
     method: "GET",
@@ -44,13 +42,42 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function getAlbums(): Promise<{
+function resolveInternalBaseUrl(isServer: boolean): string {
+  if (!isServer) {
+    return "";
+  }
+
+  // Preferred explicit base URL (works both locally and on Vercel).
+  const configured = process.env.NEXT_PUBLIC_BASE_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/+$/, "");
+  }
+
+  // Vercel provides deployment host without protocol.
+  const vercelHost = process.env.VERCEL_URL?.trim();
+  if (vercelHost) {
+    return `https://${vercelHost.replace(/\/+$/, "")}`;
+  }
+
+  // Local fallback when env vars are not set.
+  const port = process.env.PORT?.trim() || "3000";
+  return `http://localhost:${port}`;
+}
+
+export async function getAlbums(query?: string): Promise<{
   albums: Album[];
   hasMore: boolean;
 }> {
-  return fetchJson<{ albums: Album[]; hasMore: boolean }>("/api/albums");
+  const suffix = query?.trim()
+    ? `?query=${encodeURIComponent(query)}`
+    : "";
+  return fetchJson<{ albums: Album[]; hasMore: boolean }>(`/api/albums${suffix}`);
 }
 
 export async function getAlbumById(id: string): Promise<Album> {
   return fetchJson<Album>(`/api/albums/${encodeURIComponent(id)}`);
+}
+
+export async function getSongs(query: string): Promise<Track[]> {
+  return fetchJson<Track[]>(`/api/songs?query=${encodeURIComponent(query)}`);
 }
