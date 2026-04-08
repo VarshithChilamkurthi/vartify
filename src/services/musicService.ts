@@ -78,6 +78,16 @@ export async function getAlbumById(id: string): Promise<Album> {
   return fetchJson<Album>(`/api/albums/${encodeURIComponent(id)}`);
 }
 
-export async function getSongs(query: string): Promise<Track[]> {
-  return fetchJson<Track[]>(`/api/songs?query=${encodeURIComponent(query)}`);
+export async function getSongs(query: string): Promise<{songs: Track[]; hasMore: boolean}> {
+  return fetchJson<{songs: Track[]; hasMore: boolean}>(`/api/songs?query=${encodeURIComponent(query)}`);
+}
+
+export async function getArtistById(id: string): Promise<{
+  artist: { id: string; name: string; image: string };
+  songs: Track[];
+}> {
+  return fetchJson<{
+    artist: { id: string; name: string; image: string };
+    songs: Track[];
+  }>(`/api/artist/${encodeURIComponent(id)}`);
 }

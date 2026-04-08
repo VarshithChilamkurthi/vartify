@@ -5,6 +5,7 @@ import { usePlayerStore } from "@/store/playerStore";
 
 type Props = {
   songs: Track[];
+  queueSongs?: Track[];
 };
 
 function formatDuration(seconds: number) {
@@ -13,15 +14,16 @@ function formatDuration(seconds: number) {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function SongsList({ songs }: Props) {
-  const playTrack = usePlayerStore((s) => s.playTrack);
+export function SongsList({ songs, queueSongs }: Props) {
+  const playQueue = usePlayerStore((s) => s.playQueue);
+  const queue = queueSongs ?? songs;
 
   return (
     <div className="space-y-2">
       {songs.map((song, i) => (
         <button
           key={song.id}
-          onClick={() => playTrack(song)}
+          onClick={() => playQueue(queue, i)}
           className="flex w-full items-center justify-between rounded-lg px-4 py-2 text-left hover:bg-white/10"
         >
           <span className="text-white/90">{song.name}</span>

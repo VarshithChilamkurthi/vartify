@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query") || "Attack on Titan";
     const page = Number(searchParams.get("page")) || "1";
-    const limit = 10;
+    const limit = 50;
     
     const payload = await fetchSaavn(`/search/albums?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
     const items = getSearchItems(payload);

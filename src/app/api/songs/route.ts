@@ -93,6 +93,14 @@ function extractArtist(item: any): string {
   return "Unknown Artist";
 }
 
+function extractArtistId(item: any): string {
+  const primaryArtistId = item?.artists?.primary?.[0]?.id;
+  if (typeof primaryArtistId === "string" && primaryArtistId.trim()) {
+    return primaryArtistId;
+  }
+  return "";
+}
+
 function mapSongSearchItem(item: any) {
   if (!item) return null;
 
@@ -103,6 +111,7 @@ function mapSongSearchItem(item: any) {
     audioUrl:
       item.downloadUrl?.[item.downloadUrl.length - 1]?.url || "",
     artist: extractArtist(item),
+    artistId: extractArtistId(item),
     image: extractBestImageUrl(item.image),
   };
 }
@@ -111,10 +120,14 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query") || "Attack on Titan";
+    const page = Number(searchParams.get("page") || "1");
+    const limit = Number(searchParams.get("limit") || "50");
+
+    const offset = (page - 1) * limit;
 
     // ✅ DIFFERENCE: songs endpoint instead of albums
     const payload = await fetchSaavn(
-      `/search/songs?query=${encodeURIComponent(query)}&limit=10`
+      `/search/songs?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`
     );
 
     const items = getSearchItems(payload);
@@ -123,7 +136,13 @@ export async function GET(request: Request) {
       .map(mapSongSearchItem)
       .filter((song): song is NonNullable<typeof song> => song !== null);
 
-    return NextResponse.json(songs, { status: 200 });
+      return NextResponse.json(
+        {
+          songs,
+          hasMore: songs.length === limit,
+        },
+        { status: 200 }
+      );
   } catch (error) {
     if (error instanceof ExternalApiError) {
       return NextResponse.json(

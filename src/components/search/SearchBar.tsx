@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { usePlayerStore } from "@/store/playerStore";
 
 function SearchIcon({ className }: { className?: string }) {
@@ -48,11 +48,12 @@ export function SearchBar() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const playTrack = usePlayerStore((s) => s.playTrack);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const playQueue = usePlayerStore((s) => s.playQueue);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const getCleanArtist = (rawArtist: string) => rawArtist.split(",")[0].trim();
+
+  const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
 
@@ -81,7 +82,7 @@ export function SearchBar() {
 
         const data = await res.json();
   
-        setResults(data.slice(0, 5));
+        setResults((data.songs || []).slice(0, 5));
       } catch (err) {
         console.error(err);
       } finally {
@@ -93,6 +94,48 @@ export function SearchBar() {
   }, [query]);
 
   const hasValue = query.length > 0;
+  const normalizedQuery = query.trim().toLowerCase();
+
+  const artistCandidates = results
+    .map((song) => {
+      const artistName =
+        typeof song?.artist === "string" ? getCleanArtist(song.artist) : "";
+      const artistId =
+        typeof song?.artistId === "string" ? song.artistId.trim() : "";
+      return artistName && artistId ? { artistName, artistId } : null;
+    })
+    .filter(Boolean) as Array<{ artistName: string; artistId: string }>;
+
+  let topArtistName = "";
+  let topArtistId = "";
+  if (artistCandidates.length) {
+    const counts = new Map<string, number>();
+    const namesById = new Map<string, string>();
+    for (const candidate of artistCandidates) {
+      counts.set(candidate.artistId, (counts.get(candidate.artistId) ?? 0) + 1);
+      if (!namesById.has(candidate.artistId)) {
+        namesById.set(candidate.artistId, candidate.artistName);
+      }
+    }
+    topArtistId =
+      [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+    topArtistName = topArtistId ? namesById.get(topArtistId) ?? "" : "";
+  }
+
+  const showArtistRow =
+    !!topArtistName &&
+    !!topArtistId &&
+    topArtistName.toLowerCase().includes(normalizedQuery);
+
+  const topArtistImage = showArtistRow
+    ? results.find((s) => {
+        if (typeof s?.artist !== "string") return false;
+        return getCleanArtist(s.artist) === topArtistName && s?.image;
+      })?.image
+    : undefined;
+
+  const offset = showArtistRow ? 1 : 0;
+  const itemCount = results.length + offset;
 
   return (
     <form onSubmit={handleSearch} className="w-full max-w-xl relative">
@@ -113,27 +156,31 @@ export function SearchBar() {
 
         <input
           onKeyDown={(e) => {
-            if (!results.length) return;
+            if (!itemCount) return;
           
             if (e.key === "ArrowDown") {
               e.preventDefault();
               setActiveIndex((prev) =>
-                prev < results.length - 1 ? prev + 1 : 0
+                prev < itemCount - 1 ? prev + 1 : 0
               );
             }
           
             if (e.key === "ArrowUp") {
               e.preventDefault();
               setActiveIndex((prev) =>
-                prev > 0 ? prev - 1 : results.length - 1
+                prev > 0 ? prev - 1 : itemCount - 1
               );
             }
           
             if (e.key === "Enter") {
               if (activeIndex >= 0) {
                 e.preventDefault();
-                const song = results[activeIndex];
-                playQueue(results, activeIndex);
+                if (showArtistRow && activeIndex === 0) {
+                  router.push(`/artist/${encodeURIComponent(topArtistId)}`);
+                } else {
+                  const songIndex = activeIndex - offset;
+                  playQueue(results, songIndex);
+                }
                 setQuery("");
                 setResults([]);
                 setActiveIndex(-1);
@@ -172,18 +219,53 @@ export function SearchBar() {
       {results.length > 0 && (
   <div className="absolute top-full mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 shadow-xl z-50">
     
+    {/* Artist */}
+    {showArtistRow && (
+      <button
+        type="button"
+        onMouseEnter={() => setActiveIndex(0)}
+        onClick={() => {
+          router.push(`/artist/${encodeURIComponent(topArtistId)}`);
+          setQuery("");
+          setResults([]);
+          setActiveIndex(-1);
+        }}
+        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors
+            ${activeIndex === 0 ? "bg-white/15" : "hover:bg-white/10"}
+          `}
+      >
+        <div className="h-10 w-10 rounded-md overflow-hidden bg-neutral-800">
+          {topArtistImage && (
+            <img
+              src={topArtistImage}
+              alt={topArtistName}
+              className="h-full w-full object-cover"
+            />
+          )}
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-[11px] uppercase tracking-wide text-white/50">
+            Artist
+          </span>
+          <span className="text-sm text-white">{topArtistName}</span>
+        </div>
+      </button>
+    )}
+
     {/* Songs */}
     {results.map((song, index) => (
       <button type="button"
         key={song.id}
-        onMouseEnter={() => setActiveIndex(index)}
+        onMouseEnter={() => setActiveIndex(index + offset)}
         onClick={() => {
           playQueue(results, index);
           setQuery("");
           setResults([]);
+          setActiveIndex(-1);
         }}
         className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors
-            ${activeIndex === index ? "bg-white/15" : "hover:bg-white/10"}
+            ${activeIndex === index + offset ? "bg-white/15" : "hover:bg-white/10"}
           `}
       >
         <div className="h-10 w-10 rounded-md overflow-hidden bg-neutral-800">
@@ -211,6 +293,7 @@ export function SearchBar() {
       onClick={() => {
         router.push(`/search?q=${encodeURIComponent(query)}`);
         setResults([]);
+        setActiveIndex(-1);
       }}
       className="w-full px-4 py-3 text-left text-sm text-green-400 hover:bg-white/10"
     >

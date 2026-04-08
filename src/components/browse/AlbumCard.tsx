@@ -1,10 +1,24 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 import type { Album } from "@/lib/types/music";
+import { usePlayerStore } from "@/store/playerStore";
 
 export function AlbumCard({ album }: { album: Album }) {
+  const router = useRouter();
+  const playAlbum = usePlayerStore((state) => state.playAlbum);
+
   return (
-    <Link
-      href={`/album/${album.id}`}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push(`/album/${album.id}`)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          router.push(`/album/${album.id}`);
+        }
+      }}
       className="group block rounded-xl border border-white/5 bg-neutral-900/30 p-3 shadow-sm transition-all duration-300 ease-out hover:border-white/15 hover:bg-neutral-800/50 hover:shadow-lg hover:shadow-black/40 hover:scale-[1.02] active:scale-[0.99]"
     >
       <div className="relative aspect-square rounded-lg overflow-hidden">
@@ -22,7 +36,15 @@ export function AlbumCard({ album }: { album: Album }) {
 
         {/* Play button */}
         <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 scale-95 transition-all duration-300 ease-in-out group-hover:opacity-100 group-hover:scale-100">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500 text-white shadow-2xl transition-transform duration-300 group-hover:scale-110">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              playAlbum(album.songs);
+            }}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500 text-white shadow-2xl transition-transform duration-300 group-hover:scale-110"
+            aria-label={`Play ${album.name}`}
+          >
             <svg
               width="24"
               height="24"
@@ -31,7 +53,7 @@ export function AlbumCard({ album }: { album: Album }) {
             >
               <path d="M8 5v14l11-7L8 5z" />
             </svg>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -43,6 +65,6 @@ export function AlbumCard({ album }: { album: Album }) {
           {album.artist}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
