@@ -27,7 +27,7 @@ export default async function SearchPage({ searchParams }: Props) {
       ]);
       albums = albumRes.albums;
       hasMore = albumRes.hasMore;
-      songs = songRes;
+      songs = songRes.songs;
     }
   } catch (err) {
     console.error("Search page error:", err);
