@@ -123,11 +123,8 @@ export async function GET(request: Request) {
     const page = Number(searchParams.get("page") || "1");
     const limit = Number(searchParams.get("limit") || "50");
 
-    const offset = (page - 1) * limit;
-
-    // ✅ DIFFERENCE: songs endpoint instead of albums
     const payload = await fetchSaavn(
-      `/search/songs?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`
+      `/search/songs?query=${encodeURIComponent(query)}&limit=${limit}&page=${page - 1}`
     );
 
     const items = getSearchItems(payload);

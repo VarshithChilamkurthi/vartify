@@ -1,12 +1,49 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import type { MouseEvent } from "react";
+import { Play } from "lucide-react";
 import type { Album } from "@/lib/types/music";
 import { usePlayerStore } from "@/store/playerStore";
 
 export function AlbumCard({ album }: { album: Album }) {
   const router = useRouter();
-  const playAlbum = usePlayerStore((state) => state.playAlbum);
+  const playQueue = usePlayerStore((state) => state.playQueue);
+  const setPlaying = usePlayerStore((state) => state.setPlaying);
+
+  const handlePlayClick = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    try {
+      const response = await fetch(`/api/albums/${encodeURIComponent(album.id)}`, {
+        method: "GET",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = (await response.json()) as { songs?: Album["songs"] };
+      const tracks = Array.isArray(data.songs) ? data.songs : [];
+      if (!tracks.length) {
+        return;
+      }
+
+      const tracksWithMeta = tracks.map((track) => ({
+        ...track,
+        image: track.image || album.image,
+        artist: track.artist || album.artist,
+      }));
+
+      playQueue(tracksWithMeta, 0);
+      setPlaying(true);
+    } catch {
+      // Swallow to avoid disrupting navigation interactions.
+    }
+  };
 
   return (
     <div
@@ -19,7 +56,7 @@ export function AlbumCard({ album }: { album: Album }) {
           router.push(`/album/${album.id}`);
         }
       }}
-      className="group block rounded-xl border border-white/5 bg-neutral-900/30 p-3 shadow-sm transition-all duration-300 ease-out hover:border-white/15 hover:bg-neutral-800/50 hover:shadow-lg hover:shadow-black/40 hover:scale-[1.02] active:scale-[0.99]"
+      className="group/card block rounded-xl border border-white/5 bg-[#181818] p-3 shadow-sm transition-all duration-300 ease-out hover:border-white/15 hover:bg-[#202020] hover:shadow-lg hover:shadow-black/40"
     >
       <div className="relative aspect-square rounded-lg overflow-hidden">
         
@@ -27,32 +64,19 @@ export function AlbumCard({ album }: { album: Album }) {
         <img
           src={album.image}
           alt={album.name}
-          className="h-full w-full object-cover transition-all duration-300 ease-out group-hover:scale-[1.03] group-hover:brightness-110"
+          className="h-full w-full object-cover transition-all duration-300 ease-out group-hover/card:scale-[1.03] group-hover/card:brightness-110"
           loading="lazy"
         />
 
-        {/* Dark overlay */}
-        <div className="absolute inset-0 z-10 bg-black/50 opacity-0 transition-all duration-300 ease-in-out group-hover:opacity-100" />
-
-        {/* Play button */}
-        <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 scale-95 transition-all duration-300 ease-in-out group-hover:opacity-100 group-hover:scale-100">
+        <div className="absolute inset-0 z-10 bg-black/35 opacity-0 transition-all duration-300 ease-in-out group-hover/card:opacity-100" />
+        <div className="absolute bottom-3 right-3 z-20 opacity-0 translate-y-2 transition-all duration-300 ease-in-out group-hover/card:translate-y-0 group-hover/card:opacity-100">
           <button
             type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              playAlbum(album.songs);
-            }}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500 text-white shadow-2xl transition-transform duration-300 group-hover:scale-110"
+            onClick={handlePlayClick}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1DB954] text-black shadow-2xl transition hover:scale-105"
             aria-label={`Play ${album.name}`}
           >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M8 5v14l11-7L8 5z" />
-            </svg>
+            <Play size={20} fill="currentColor" />
           </button>
         </div>
       </div>

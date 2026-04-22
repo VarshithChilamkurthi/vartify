@@ -1,58 +1,68 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import { useCallback, useState } from "react";
+import {
+  Maximize2,
+  ListMusic,
+  Pause,
+  Play,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+} from "lucide-react";
 
-import { useAudioPlayer } from "@/hooks/useAudioPlayer";
-import { seekTo } from "@/hooks/useAudioPlayer";
+import { getAudioElement, seekTo, useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { selectCurrentTrack, usePlayerStore } from "@/store/playerStore";
-
-function IconPrev() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M6 5h2v14H6V5zm3.5 7L20 19V5L9.5 12z" />
-    </svg>
-  );
-}
-
-function IconNext() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M16 5h2v14h-2V5zM4 19l10.5-7L4 5v14z" />
-    </svg>
-  );
-}
-
-function IconPlay() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M8 5v14l11-7L8 5z" />
-    </svg>
-  );
-}
-
-function IconPause() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z" />
-    </svg>
-  );
-}
 
 export function PlayerBar() {
   const currentTrack = usePlayerStore(selectCurrentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const isShuffle = usePlayerStore((s) => s.isShuffle);
+  const loopMode = usePlayerStore((s) => s.loopMode);
+  const queue = usePlayerStore((s) => s.queue);
+  const currentIndex = usePlayerStore((s) => s.currentIndex);
+  const playbackContext = usePlayerStore((s) => s.playbackContext);
   const prev = usePlayerStore((s) => s.prev);
-  const next = usePlayerStore((s) => s.next);
+  const playNext = usePlayerStore((s) => s.next);
+  const playQueue = usePlayerStore((s) => s.playQueue);
+  const appendSongs = usePlayerStore((s) => s.appendSongs);
+  const setPlaying = usePlayerStore((s) => s.setPlaying);
+  const setPlaybackContext = usePlayerStore((s) => s.setPlaybackContext);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
+  const cycleLoopMode = usePlayerStore((s) => s.cycleLoopMode);
+  const toggleQueue = usePlayerStore((s) => s.toggleQueue);
   const toggleExpanded = usePlayerStore((s) => s.toggleExpanded);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   const { currentTime, duration } = useAudioPlayer();
+  const repeatMode: "OFF" | "ALL" | "ONE" =
+    loopMode === "one" ? "ONE" : loopMode === "all" ? "ALL" : "OFF";
+
+    const handleTrackEnd = useCallback(async () => {
+      const audio = getAudioElement();
+      const { loopMode, next } = usePlayerStore.getState(); // Get fresh state
+    
+      if (loopMode === "one" && audio) {
+        audio.currentTime = 0;
+        void audio.play().catch(() => {});
+        return;
+      }
+    
+      // Just call the smart 'next' we built in the store
+      await next();
+      
+      // If we are still playing (meaning next found a song or fetched one)
+      if (usePlayerStore.getState().isPlaying && audio) {
+        void audio.play().catch(() => {});
+      }
+    }, []);
 
   if (!currentTrack) {
     return null;
   }
-
-  const progressRatio = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0;
 
   const formatTime = (seconds: number) => {
     const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
@@ -60,57 +70,58 @@ export function PlayerBar() {
     const secs = Math.floor(safe % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
-
-  const onProgressClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (duration <= 0) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const ratio = Math.min(1, Math.max(0, x / rect.width));
-    seekTo(ratio * duration);
-  };
+  const progressPercent = duration > 0 ? (Math.min(currentTime, duration) / duration) * 100 : 0;
 
   return (
-    <div
-  onClick={toggleExpanded}
-  className="fixed inset-x-0 bottom-0 z-50 cursor-pointer border-t border-white/10 bg-neutral-950/80 backdrop-blur"
->
-      <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-3 sm:px-6">
-        {/* Left */}
+    <div className="relative z-50 flex-shrink-0 w-full border-t border-white/10 bg-black/90 backdrop-blur">
+      <audio id="vartify-audio" onEnded={() => void handleTrackEnd()} className="hidden" />
+      <div className="mx-auto grid max-w-[1400px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
-  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-neutral-800">
-    {currentTrack.image ? (
-      <img
-        src={currentTrack.image}
-        alt={currentTrack.name}
-        className="h-full w-full object-cover"
-      />
-    ) : (
-      <div className="h-full w-full bg-gradient-to-br from-neutral-700 to-neutral-900" />
-    )}
-  </div>
+          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-[#181818]">
+            {currentTrack.image ? (
+              <img
+                src={currentTrack.image}
+                alt={currentTrack.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full bg-neutral-800" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-white">
+              {currentTrack.name}
+            </div>
+            <div className="truncate text-xs text-white/60">
+              {currentTrack.artist || "Unknown Artist"}
+            </div>
+          </div>
+        </div>
 
-  <div className="min-w-0">
-    <div className="truncate text-sm font-semibold text-white/95">
-      {currentTrack.name}
-    </div>
-    <div className="truncate text-xs text-white/60">
-      {currentTrack.artist || "Unknown Artist"}
-    </div>
-  </div>
-</div>
-
-        {/* Center */}
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleShuffle();
+            }}
+            className={`rounded-full p-2 ${
+              isShuffle ? "text-[#1DB954]" : "text-white/70 hover:text-white"
+            }`}
+            aria-label="Shuffle"
+          >
+            <Shuffle size={18} />
+          </button>
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               prev();
             }}
-            className="rounded-full p-2 text-white/70 transition-all duration-300 ease-in-out hover:bg-white/10 hover:text-white"
+            className="rounded-full p-2 text-white/70 hover:bg-white/10 hover:text-white"
             aria-label="Previous"
           >
-            <IconPrev />
+            <SkipBack size={20} />
           </button>
 
           <button
@@ -119,54 +130,79 @@ export function PlayerBar() {
               e.stopPropagation();
               togglePlay();
             }}
-            className="rounded-full bg-white p-2 text-black transition-all duration-300 ease-in-out hover:scale-105"
+            className="rounded-full bg-white p-2 text-black transition hover:scale-105"
             aria-label={isPlaying ? "Pause" : "Play"}
           >
-            {isPlaying ? <IconPause /> : <IconPlay />}
+            {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
           </button>
 
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              next();
+              playNext();
             }}
-            className="rounded-full p-2 text-white/70 transition-all duration-300 ease-in-out hover:bg-white/10 hover:text-white"
+            className="rounded-full p-2 text-white/70 hover:bg-white/10 hover:text-white"
             aria-label="Next"
           >
-            <IconNext />
+            <SkipForward size={20} />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              cycleLoopMode();
+            }}
+            className={`rounded-full p-2 ${
+              loopMode !== "off" ? "text-[#1DB954]" : "text-white/70 hover:text-white"
+            }`}
+            aria-label="Repeat"
+          >
+            {loopMode === "one" ? <Repeat1 size={18} /> : <Repeat size={18} />}
           </button>
         </div>
 
-        {/* Right - Progress */}
-<div className="flex items-center justify-end">
-  <div className="flex w-full max-w-xs items-center gap-2 text-xs text-white/60">
-    <span className="w-10 text-right">
-      {formatTime(currentTime)}
-    </span>
-
-    <div
-      className="relative h-1 flex-1 cursor-pointer rounded-full bg-white/10"
-      onClick={(e) => {
-        e.stopPropagation();
-        onProgressClick(e);
-      }}
-    >
-      <div
-        className="absolute left-0 top-0 h-1 rounded-full bg-green-500"
-        style={{
-          width: duration
-            ? `${(currentTime / duration) * 100}%`
-            : "0%",
-        }}
-      />
-    </div>
-
-    <span className="w-10">
-      {formatTime(duration)}
-    </span>
-  </div>
-</div>
+        <div className="flex items-center justify-end gap-3">
+          <span className="w-10 text-right text-xs text-white/60">{formatTime(currentTime)}</span>
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            value={Math.min(currentTime, duration || 0)}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              e.stopPropagation();
+              seekTo(Number(e.target.value));
+            }}
+            className="spotify-range h-1 w-full max-w-xs cursor-pointer"
+            style={{ backgroundSize: `${progressPercent}% 100%, 100% 100%` }}
+            aria-label="Seek"
+          />
+          <span className="w-10 text-xs text-white/60">{formatTime(duration)}</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleQueue();
+            }}
+            className="rounded-full p-2 text-white/70 hover:bg-white/10 hover:text-white"
+            aria-label="Queue"
+          >
+            <ListMusic size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExpanded();
+            }}
+            className="rounded-full p-2 text-white/70 hover:bg-white/10 hover:text-white"
+            aria-label="Expand player"
+          >
+            <Maximize2 size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );

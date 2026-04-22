@@ -1,9 +1,9 @@
 import { AlbumGrid } from "@/components/browse/AlbumGrid";
 import type { Album, Track } from "@/lib/types/music";
-import { SongsList } from "@/components/search/SongsList";
 import { SearchResultsClient } from "@/components/search/SearchResultsClient";
-import { PlayAllButton } from "@/components/search/PlayAllButton";
+import { SongRow } from "@/components/search/SongRow";
 import { getAlbums, getSongs } from "@/services/musicService";
+import Link from "next/link";
 
 type Props = {
   searchParams: Promise<{
@@ -32,6 +32,7 @@ export default async function SearchPage({ searchParams }: Props) {
   } catch (err) {
     console.error("Search page error:", err);
   }
+  const displaySongs = songs.slice(0, 6);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-10">
@@ -43,9 +44,22 @@ export default async function SearchPage({ searchParams }: Props) {
       {/* Songs */}
       {songs.length > 0 && (
         <section>
-          <h2 className="mb-4 text-lg font-semibold text-white">Songs</h2>
-          <PlayAllButton songs={songs} />
-          <SongsList songs={songs} />
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-white">Songs</h2>
+            {query ? (
+              <Link
+                href={`/search/songs?q=${encodeURIComponent(query)}`}
+                className="text-sm font-medium text-emerald-400 hover:text-emerald-300"
+              >
+                See all
+              </Link>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            {displaySongs.map((track, index) => (
+              <SongRow key={`${track.id}-${index}`} track={track} />
+            ))}
+          </div>
         </section>
       )}
 

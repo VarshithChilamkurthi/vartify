@@ -78,8 +78,13 @@ export async function getAlbumById(id: string): Promise<Album> {
   return fetchJson<Album>(`/api/albums/${encodeURIComponent(id)}`);
 }
 
-export async function getSongs(query: string): Promise<{songs: Track[]; hasMore: boolean}> {
-  return fetchJson<{songs: Track[]; hasMore: boolean}>(`/api/songs?query=${encodeURIComponent(query)}`);
+export async function getSongs(
+  query: string,
+  page: number = 1
+): Promise<{ songs: Track[]; hasMore: boolean }> {
+  return fetchJson<{ songs: Track[]; hasMore: boolean }>(
+    `/api/songs?query=${encodeURIComponent(query)}&page=${page}`
+  );
 }
 
 export async function getArtistById(id: string): Promise<{
@@ -90,4 +95,25 @@ export async function getArtistById(id: string): Promise<{
     artist: { id: string; name: string; image: string };
     songs: Track[];
   }>(`/api/artist/${encodeURIComponent(id)}`);
+}
+
+export async function getArtistSongs(
+  id: string,
+  page: number = 1
+): Promise<{ songs: Track[]; hasMore: boolean }> {
+  return fetchJson<{ songs: Track[]; hasMore: boolean }>(
+    `/api/artist/${encodeURIComponent(id)}/songs?page=${page}`
+  );
+}
+
+export async function getJumpBackInAlbums(): Promise<{ albums: Album[] }> {
+  return fetchJson<{ albums: Album[] }>("/api/home/jump-back-in");
+}
+
+export async function getNewReleases(): Promise<{ albums: Album[] }> {
+  return fetchJson<{ albums: Album[] }>("/api/home/new-releases");
+}
+
+export async function getRecommendations(): Promise<{ albums: Album[] }> {
+  return fetchJson<{ albums: Album[] }>("/api/home/recommendations");
 }

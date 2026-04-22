@@ -49,6 +49,7 @@ export function SearchBar() {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const [artistProfileImage, setArtistProfileImage] = useState<string | undefined>(undefined);
   const playQueue = usePlayerStore((s) => s.playQueue);
 
   const getCleanArtist = (rawArtist: string) => rawArtist.split(",")[0].trim();
@@ -133,6 +134,40 @@ export function SearchBar() {
         return getCleanArtist(s.artist) === topArtistName && s?.image;
       })?.image
     : undefined;
+
+  useEffect(() => {
+    if (!showArtistRow || !topArtistId) {
+      setArtistProfileImage(undefined);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadArtistImage = async () => {
+      try {
+        const res = await fetch(`/api/artist/${encodeURIComponent(topArtistId)}`, {
+          method: "GET",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          return;
+        }
+        const data = (await res.json()) as { artist?: { image?: string } };
+        const img = data?.artist?.image;
+        if (typeof img === "string" && img.trim()) {
+          setArtistProfileImage(img);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    void loadArtistImage();
+
+    return () => controller.abort();
+  }, [showArtistRow, topArtistId]);
 
   const offset = showArtistRow ? 1 : 0;
   const itemCount = results.length + offset;
@@ -235,9 +270,9 @@ export function SearchBar() {
           `}
       >
         <div className="h-10 w-10 rounded-md overflow-hidden bg-neutral-800">
-          {topArtistImage && (
+          {(artistProfileImage || topArtistImage) && (
             <img
-              src={topArtistImage}
+              src={artistProfileImage || topArtistImage}
               alt={topArtistName}
               className="h-full w-full object-cover"
             />

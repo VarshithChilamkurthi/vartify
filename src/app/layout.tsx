@@ -3,8 +3,10 @@ import localFont from "next/font/local";
 import "./globals.css";
 
 import { AudioPlayerRoot } from "@/components/AudioPlayerRoot";
+import { AppShell } from "@/components/layout/AppShell";
 import { PlayerBar } from "@/components/player/PlayerBar";
 import { PlayerExpanded } from "@/components/player/PlayerExpanded";
+import { NowPlayingQueuePanel } from "@/components/player/NowPlayingQueuePanel";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -29,12 +31,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-24`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AudioPlayerRoot />
-        {children}
-        <PlayerBar />
+        <div className="flex h-screen flex-col overflow-hidden bg-neutral-950">
+          {/* Top Workspace: Main Content + Sliding Queue */}
+          <div className="flex flex-1 overflow-hidden relative">
+            <AppShell>{children}</AppShell>
+            <NowPlayingQueuePanel />
+          </div>
+          
+          {/* Bottom Anchor: Player Bar stays full width */}
+          <PlayerBar />
+        </div>
         <PlayerExpanded />
       </body>
     </html>

@@ -6,6 +6,19 @@ import { selectCurrentTrack, usePlayerStore } from "@/store/playerStore";
 
 function getGlobalAudioSingleton(): HTMLAudioElement {
   const g = globalThis as unknown as { __vartifyAudio?: HTMLAudioElement };
+  if (typeof document !== "undefined") {
+    const domAudio = document.getElementById("vartify-audio") as HTMLAudioElement | null;
+    if (domAudio) {
+      if (g.__vartifyAudio && g.__vartifyAudio !== domAudio) {
+        domAudio.src = g.__vartifyAudio.src;
+        domAudio.currentTime = g.__vartifyAudio.currentTime;
+        domAudio.volume = g.__vartifyAudio.volume;
+      }
+      g.__vartifyAudio = domAudio;
+      g.__vartifyAudio.preload = "metadata";
+      return g.__vartifyAudio;
+    }
+  }
   if (!g.__vartifyAudio) {
     g.__vartifyAudio = new Audio();
     g.__vartifyAudio.preload = "metadata";
@@ -19,6 +32,13 @@ function safeNumber(value: number): number {
 
 function getAudio(): HTMLAudioElement {
   return getGlobalAudioSingleton();
+}
+
+export function getAudioElement(): HTMLAudioElement | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return getAudio();
 }
 
 export function seekTo(seconds: number): void {
@@ -49,7 +69,7 @@ export function useAudioPlayer(): { currentTime: number; duration: number } {
 
   const audioUrl = currentTrack?.audioUrl;
 
-  // 1) Attach reliable audio event listeners (time/duration/ended/seek)
+  // 1) Attach reliable audio event listeners (time/duration/seek)
   useEffect(() => {
     if (!audio) return;
 
@@ -70,22 +90,16 @@ export function useAudioPlayer(): { currentTime: number; duration: number } {
       setDuration(safeNumber(audio.duration));
     };
 
-    const onEnded = () => {
-      usePlayerStore.getState().next();
-    };
-
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("seeked", onSeeked);
     audio.addEventListener("durationchange", onDurationChange);
-    audio.addEventListener("ended", onEnded);
 
     return () => {
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("seeked", onSeeked);
       audio.removeEventListener("durationchange", onDurationChange);
-      audio.removeEventListener("ended", onEnded);
     };
   }, [audio]);
 
@@ -136,6 +150,74 @@ export function useAudioPlayer(): { currentTime: number; duration: number } {
     if (!audio) return;
     audio.volume = Math.max(0, Math.min(1, volume));
   }, [volume, audio]);
+
+  // 5) Keyboard media controls
+  useEffect(() => {
+    if (!audio) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTypingTarget =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      if (isTypingTarget) {
+        return;
+      }
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        usePlayerStore.getState().togglePlay();
+      } else if (event.code === "ArrowRight") {
+        event.preventDefault();
+        seekTo(audio.currentTime + 10);
+      } else if (event.code === "ArrowLeft") {
+        event.preventDefault();
+        seekTo(audio.currentTime - 10);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [audio]);
+
+  // 6) Media Session integration
+  useEffect(() => {
+    if (!audio || typeof navigator === "undefined" || !("mediaSession" in navigator)) {
+      return;
+    }
+
+    navigator.mediaSession.metadata = currentTrack
+      ? new MediaMetadata({
+          title: currentTrack.name,
+          artist: currentTrack.artist || "Unknown Artist",
+          artwork: currentTrack.image
+            ? [{ src: currentTrack.image, sizes: "512x512", type: "image/jpeg" }]
+            : [],
+        })
+      : null;
+
+    navigator.mediaSession.setActionHandler("play", () => {
+      usePlayerStore.getState().setPlaying(true);
+    });
+    navigator.mediaSession.setActionHandler("pause", () => {
+      usePlayerStore.getState().setPlaying(false);
+    });
+    navigator.mediaSession.setActionHandler("nexttrack", () => {
+      usePlayerStore.getState().next();
+    });
+    navigator.mediaSession.setActionHandler("previoustrack", () => {
+      usePlayerStore.getState().prev();
+    });
+
+    return () => {
+      navigator.mediaSession.setActionHandler("play", null);
+      navigator.mediaSession.setActionHandler("pause", null);
+      navigator.mediaSession.setActionHandler("nexttrack", null);
+      navigator.mediaSession.setActionHandler("previoustrack", null);
+    };
+  }, [audio, currentTrack]);
 
   return { currentTime, duration };
 }

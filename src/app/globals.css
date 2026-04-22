@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #121212;
+  --foreground: #ffffff;
 }
 
 @keyframes slide-up {
@@ -24,15 +24,40 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #121212;
+    --foreground: #ffffff;
   }
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.spotify-range {
+  appearance: none;
+  background: linear-gradient(to right, #1db954, #1db954) no-repeat, #3a3a3a;
+  background-size: 0% 100%;
+  border-radius: 999px;
+}
+
+.spotify-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #fff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.spotify-range:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.spotify-range:hover {
+  background-image: linear-gradient(to right, #1db954, #1db954), #4b4b4b;
 }
 
 @layer utilities {

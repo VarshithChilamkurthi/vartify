@@ -21,8 +21,10 @@ export default async function AlbumPage({
     const album = await getAlbumById(albumId);
 
     return (
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <section className="mb-10 flex flex-col gap-6 md:flex-row md:items-end">
+      <main className="mx-auto max-w-7xl px-4 pb-8 sm:px-6">
+        <section className="relative mb-10 overflow-hidden rounded-2xl p-6 sm:p-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-800/30 via-[#1f1f1f] to-[#121212]" />
+          <div className="relative flex flex-col gap-6 md:flex-row md:items-end">
           <div className="w-full max-w-[320px] shrink-0 overflow-hidden rounded-xl shadow-2xl">
             <img
               src={album.image}
@@ -40,6 +42,7 @@ export default async function AlbumPage({
             </h1>
             <p className="text-base text-white/70">{album.artist}</p>
             <PlayAlbumButton tracks={album.songs} artist={album.artist} image={album.image} />
+          </div>
           </div>
         </section>
 

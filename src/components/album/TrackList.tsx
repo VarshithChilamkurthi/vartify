@@ -1,7 +1,9 @@
 "use client";
 
+import { Play } from "lucide-react";
+
 import type { Track } from "@/lib/types/music";
-import { usePlayerStore } from "@/store/playerStore";
+import { selectCurrentTrack, usePlayerStore } from "@/store/playerStore";
 
 type TrackListProps = {
   tracks: Track[];
@@ -17,7 +19,7 @@ function formatDuration(seconds: number): string {
 }
 
 export function TrackList({ tracks, artist, image }: TrackListProps) {
-  const playTrack = usePlayerStore((state) => state.playTrack);
+  const currentTrack = usePlayerStore(selectCurrentTrack);
 
   if (!tracks.length) {
     return (
@@ -29,9 +31,11 @@ export function TrackList({ tracks, artist, image }: TrackListProps) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-white/10 bg-neutral-900/40">
-      <div className="grid grid-cols-[56px_1fr_80px] px-4 py-3 text-xs uppercase tracking-wide text-white/50">
+      <div className="grid grid-cols-[56px_2fr_1fr_1fr_80px] px-4 py-3 text-xs uppercase tracking-wide text-white/50">
         <span>#</span>
         <span>Title</span>
+        <span>Album</span>
+        <span>Date Added</span>
         <span className="text-right">Time</span>
       </div>
 
@@ -54,10 +58,24 @@ export function TrackList({ tracks, artist, image }: TrackListProps) {
               store.playAlbum(tracksWithMeta);
               store.setCurrentIndex(clickedIndex);
             }}
-            className="grid w-full grid-cols-[56px_1fr_80px] items-center px-4 py-3 text-left transition-all duration-300 ease-in-out hover:bg-white/10"
+            className="group grid w-full grid-cols-[56px_2fr_1fr_1fr_80px] items-center px-4 py-3 text-left transition hover:bg-white/10"
           >
-            <span className="text-sm text-white/60">{index + 1}</span>
-            <span className="truncate pr-2 text-sm text-white/90">{track.name}</span>
+            <span className="text-sm text-white/60 group-hover:hidden">{index + 1}</span>
+            <span className="hidden text-sm text-white/80 group-hover:inline-flex">
+              <Play size={14} fill="currentColor" />
+            </span>
+            <span className="truncate pr-2 text-sm text-white/90">
+              <span
+                className={`block truncate ${
+                  currentTrack?.id === track.id ? "text-[#1DB954]" : "text-white/90"
+                }`}
+              >
+                {track.name}
+              </span>
+              <span className="block truncate text-xs text-white/55">{artist}</span>
+            </span>
+            <span className="truncate pr-2 text-sm text-white/60">{artist}</span>
+            <span className="truncate pr-2 text-sm text-white/60">Today</span>
             <span className="text-right text-sm text-white/60">
               {formatDuration(track.duration)}
             </span>

@@ -1,11 +1,17 @@
 import type { Album, Track } from "@/lib/types/music";
 
 import { getAlbums } from "@/services/musicService";
-import { AlbumGrid } from "@/components/browse/AlbumGrid";
 import { HomeHero } from "@/components/browse/HomeHero";
-import { SearchBar } from "@/components/search/SearchBar";
-import { ArtistRow } from "@/components/browse/ArtistRow";
 import { getSongs } from "@/services/musicService";
+import {
+  getJumpBackInAlbums,
+  getNewReleases,
+  getRecommendations,
+} from "@/services/musicService";
+import { getGreeting } from "@/utils/greeting";
+import { HorizontalScroll } from "@/components/ui/HorizontalScroll";
+import { ArtistCard } from "@/components/browse/ArtistCard";
+import { AlbumCard } from "@/components/browse/AlbumCard";
 
 type ArtistItem = {
   id: string;
@@ -36,11 +42,23 @@ function getFavoriteArtistsFromSongs(
 
 export default async function Page() {
   let albums: Album[] = [];
+  let jumpBackInAlbums: Album[] = [];
+  let newReleaseAlbums: Album[] = [];
+  let recommendationAlbums: Album[] = [];
   let errorMessage: string | null = null;
 
   try {
-    const albumRes = await getAlbums();
+    const [albumRes, jumpBackInRes, newReleasesRes, recommendationsRes] =
+      await Promise.all([
+        getAlbums(),
+        getJumpBackInAlbums(),
+        getNewReleases(),
+        getRecommendations(),
+      ]);
     albums = albumRes.albums;
+    jumpBackInAlbums = jumpBackInRes.albums;
+    newReleaseAlbums = newReleasesRes.albums;
+    recommendationAlbums = recommendationsRes.albums;
   } catch (err) {
     errorMessage = err instanceof Error ? err.message : "Failed to load albums";
   }
@@ -54,8 +72,6 @@ export default async function Page() {
   }
 
   const featuredHero = albums[0];
-  const featuredRow = albums.slice(1, 5);
-  const popularAlbums = albums.slice(5);
   const favoriteArtists = getFavoriteArtistsFromSongs(songs);
 
   const artistsWithImages = await Promise.all(
@@ -85,12 +101,11 @@ export default async function Page() {
 
   return (
     <main className="min-h-screen bg-neutral-950 pb-28">
-      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8 lg:pt-10">
+      <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8 lg:pt-6">
         <header className="mb-10 space-y-2">
-          <SearchBar />
           <div className="pt-2">
             <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Good evening
+              {getGreeting()}
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/50">
               Browse albums and pick something to play. Your music picks up where
@@ -119,43 +134,51 @@ export default async function Page() {
               </section>
             ) : null}
 
-{favoriteArtists.length > 0 && (
+            {favoriteArtists.length > 0 && (
               <section className="space-y-4">
-                <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                  Your Favorite Artists
-                </h2>
-                <ArtistRow artists={artistsWithImages} />
+                <HorizontalScroll title="Your Favorite Artists">
+                  {artistsWithImages.map((artist) => (
+                    <ArtistCard
+                      key={artist.id || artist.name}
+                      artist={{
+                        id: artist.id,
+                        name: artist.name,
+                        image: artist.image || "",
+                      }}
+                    />
+                  ))}
+                </HorizontalScroll>
               </section>
             )}
 
-            {featuredRow.length > 0 ? (
-              <section className="space-y-5">
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                      Featured
-                    </h2>
-                    <p className="mt-1 text-sm text-white/45">
-                      Hand-picked highlights for you
-                    </p>
+            {jumpBackInAlbums.length > 0 ? (
+              <HorizontalScroll title="Jump Back In">
+                {jumpBackInAlbums.map((album) => (
+                  <div key={album.id} className="w-[180px] shrink-0">
+                    <AlbumCard album={album} />
                   </div>
-                </div>
-                <AlbumGrid albums={featuredRow} />
-              </section>
+                ))}
+              </HorizontalScroll>
             ) : null}
 
-            {popularAlbums.length > 0 ? (
-              <section className="space-y-5">
-                <div>
-                  <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                    Popular Albums
-                  </h2>
-                  <p className="mt-1 text-sm text-white/45">
-                    Trending and loved by listeners
-                  </p>
-                </div>
-                <AlbumGrid albums={popularAlbums} />
-              </section>
+            {newReleaseAlbums.length > 0 ? (
+              <HorizontalScroll title="New Releases">
+                {newReleaseAlbums.map((album) => (
+                  <div key={album.id} className="w-[180px] shrink-0">
+                    <AlbumCard album={album} />
+                  </div>
+                ))}
+              </HorizontalScroll>
+            ) : null}
+
+            {recommendationAlbums.length > 0 ? (
+              <HorizontalScroll title="Recommendations">
+                {recommendationAlbums.map((album) => (
+                  <div key={album.id} className="w-[180px] shrink-0">
+                    <AlbumCard album={album} />
+                  </div>
+                ))}
+              </HorizontalScroll>
             ) : null}
           </div>
         )}

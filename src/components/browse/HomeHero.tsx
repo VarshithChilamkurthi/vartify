@@ -1,16 +1,92 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect, useState, type MouseEvent } from "react";
+import { Play } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import type { Album } from "@/lib/types/music";
+import { usePlayerStore } from "@/store/playerStore";
+import { getAverageColor } from "@/utils/colorUtils";
 
 type HomeHeroProps = {
   album: Album;
 };
 
 export function HomeHero({ album }: HomeHeroProps) {
+  const router = useRouter();
+  const playQueue = usePlayerStore((state) => state.playQueue);
+  const setPlaying = usePlayerStore((state) => state.setPlaying);
+  const [dominantColor, setDominantColor] = useState("rgba(34, 197, 94, 0.3)");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadColor = async () => {
+      const color = await getAverageColor(album.image);
+      if (isMounted) {
+        setDominantColor(color);
+      }
+    };
+
+    void loadColor();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [album.image]);
+
+  const handlePlayClick = async (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    try {
+      const response = await fetch(`/api/albums/${encodeURIComponent(album.id)}`, {
+        method: "GET",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = (await response.json()) as { songs?: Album["songs"] };
+      const songs = Array.isArray(data.songs) ? data.songs : [];
+      if (!songs.length) {
+        return;
+      }
+
+      const tracksWithMeta = songs.map((track) => ({
+        ...track,
+        image: track.image || album.image,
+        artist: track.artist || album.artist,
+      }));
+
+      playQueue(tracksWithMeta, 0);
+      setPlaying(true);
+    } catch {
+      // Swallow to avoid disrupting navigation interactions.
+    }
+  };
+
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-950/80 via-neutral-950 to-neutral-950 p-6 shadow-2xl sm:p-8 md:p-10">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push(`/album/${album.id}`)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          router.push(`/album/${album.id}`);
+        }
+      }}
+      className="group relative cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-950/80 via-neutral-950 to-neutral-950 p-6 shadow-2xl sm:p-8 md:p-10"
+    >
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(34,197,94,0.25),transparent)]"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `radial-gradient(ellipse 80% 60% at 50% -20%, ${dominantColor}, transparent)`,
+        }}
         aria-hidden
       />
       <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:gap-10">
@@ -19,16 +95,17 @@ export function HomeHero({ album }: HomeHeroProps) {
             <img
               src={album.image}
               alt={album.name}
-              className="aspect-square w-full object-cover"
+              crossOrigin="anonymous"
+              className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
             <div className="aspect-square w-full bg-gradient-to-br from-neutral-700 to-neutral-900" />
           )}
         </div>
 
-        <div className="min-w-0 flex-1 space-y-4 pb-1 text-center md:pb-2 md:text-left">
+        <div className="min-w-0 flex-1 space-y-4 rounded-xl border border-white/10 bg-black/40 p-6 pb-1 text-center backdrop-blur-md md:pb-2 md:text-left">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/45">
-            Featured
+            JUMP BACK IN
           </p>
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
             {album.name}
@@ -36,21 +113,17 @@ export function HomeHero({ album }: HomeHeroProps) {
           <p className="text-base text-white/55 md:text-lg">{album.artist}</p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2 md:justify-start">
-            <Link
-              href={`/album/${album.id}`}
+            <button
+              type="button"
+              onClick={handlePlayClick}
               className="inline-flex min-h-[44px] min-w-[120px] items-center justify-center rounded-full bg-green-500 px-8 text-sm font-bold text-black transition-all duration-300 hover:scale-[1.02] hover:bg-green-400 active:scale-[0.98]"
             >
-              Play
-            </Link>
-            <Link
-              href={`/album/${album.id}`}
-              className="inline-flex min-h-[44px] min-w-[120px] items-center justify-center rounded-full border border-white/20 bg-white/5 px-8 text-sm font-semibold text-white transition-all duration-300 hover:border-white/30 hover:bg-white/10"
-            >
-              Open
-            </Link>
+              <Play size={16} fill="currentColor" className="mr-2" />
+              Resume
+            </button>
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
