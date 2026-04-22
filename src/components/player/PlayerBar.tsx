@@ -74,7 +74,15 @@ export function PlayerBar() {
 
   return (
     <div className="relative z-50 flex-shrink-0 w-full border-t border-white/10 bg-black/90 backdrop-blur">
-      <audio id="vartify-audio" onEnded={() => void handleTrackEnd()} className="hidden" />
+      <audio
+        id="vartify-audio"
+        key={currentTrack.id}
+        src={currentTrack.audioUrl}
+        onEnded={() => void handleTrackEnd()}
+        autoPlay={isPlaying}
+        preload="auto"
+        className="hidden"
+      />
       <div className="mx-auto grid max-w-[1400px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-[#181818]">
