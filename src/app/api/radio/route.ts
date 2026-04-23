@@ -148,9 +148,22 @@ export async function POST(request: Request) {
     // 1. ATTEMPT AI GENERATION
     if (process.env.GEMINI_API_KEY && seedName) {
       const langConstraint = seedLanguage
-        ? `The recommended songs MUST strictly be in the ${seedLanguage} language.`
+        ? `The recommendations MUST strictly be ${seedLanguage} language songs.`
         : `Identify the primary language of the seed track and ensure all recommendations are STRICTLY in that exact same language.`;
-      const prompt = `You are an expert music DJ. The user just listened to '${seedName}' by '${seedArtist}'. ${langConstraint} Generate an array of 5 highly specific search queries to find similar, vibe-matching songs. DO NOT return the exact same song. Return ONLY a JSON array of 5 strings.`;
+
+      const prompt = `You are an expert music DJ building a dynamic, gapless radio station.
+The user just listened to '${seedName}' by '${seedArtist}'.
+${langConstraint}
+
+Your task: Generate an array of 5 highly specific search queries for a music API to find vibe-matching songs.
+
+CRITICAL RULES:
+1. NEVER include the original song name ('${seedName}') in any query.
+2. Only 1 query is allowed to use the original artist's name ('${seedArtist}').
+3. The other 4 queries MUST describe the genre, mood, era, or similar artists (e.g., "2023 romantic melody", "upbeat dance hits", "soulful acoustic").
+4. Introduce randomness and variety so the playlist feels fresh and unexpected.
+
+Return ONLY a valid JSON array containing exactly 5 string queries. Do not include markdown formatting or explanations.`;
 
       try {
         const response = await ai.models.generateContent({

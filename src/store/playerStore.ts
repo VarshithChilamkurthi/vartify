@@ -202,72 +202,60 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
         nextIndex = Math.floor(Math.random() * queue.length);
       }
       set({ currentIndex: nextIndex, isPlaying: true });
-      const q = get().queue;
-      const t = q[nextIndex];
-      if (t) {
-        get().addToHistory(t);
-      }
       return;
     }
 
-    // 3. Handle Normal Next
+    // 3. Handle Normal Next (Still have songs in local queue)
     if (currentIndex < queue.length - 1) {
       set({ currentIndex: currentIndex + 1, isPlaying: true });
 
-      const t = get().queue[currentIndex + 1];
-      if (t) {
-        get().addToHistory(t);
-      }
-
-      // AI Radio Look-ahead Trigger (Fetch even if in an album/artist context)
+      // AI Radio Look-ahead Trigger
+      // CRITICAL FIX: Only look ahead for AI Radio if we are NOT in an active album/artist context
       const remainingSongs = queue.length - 1 - (currentIndex + 1);
-      if (remainingSongs <= 2 && get().isRadioMode) {
+      if (remainingSongs <= 2 && get().isRadioMode && !playbackContext) {
         get().fetchRadioTracks().catch(console.error);
       }
       return;
     }
 
-    // 4. THE FIX: Handle End of Queue + Pagination
-    if (playbackContext?.type === "artist") {
+    // 4. End of Local Queue -> Resolve Context (Pagination or Clear)
+    let currentContext = playbackContext;
+
+    if (currentContext?.type === "artist") {
       try {
-        const nextPage = playbackContext.page + 1;
-        const res = await fetch(`/api/artist/${encodeURIComponent(playbackContext.id)}/songs?page=${nextPage}`);
+        const nextPage = currentContext.page + 1;
+        const res = await fetch(
+          `/api/artist/${encodeURIComponent(currentContext.id)}/songs?page=${nextPage}`,
+        );
         const data = await res.json();
 
-        if (data.songs?.length) {
-          // We update the queue AND move to the next song in one go
-          const nextIndex = currentIndex + 1;
+        if (data.songs && data.songs.length > 0) {
           set({
             queue: [...queue, ...data.songs],
-            currentIndex: nextIndex,
-            playbackContext: { ...playbackContext, page: nextPage },
+            currentIndex: currentIndex + 1,
+            playbackContext: { ...currentContext, page: nextPage },
             isPlaying: true,
           });
-          const t = get().queue[nextIndex];
-          if (t) {
-            get().addToHistory(t);
-          }
-          return;
+          return; // Successfully paginated the artist!
+        } else {
+          // Artist catalog is completely exhausted. Clear context to allow Radio hand-off.
+          currentContext = null;
+          set({ playbackContext: null });
         }
       } catch (err) {
-        console.error("Failed to fetch next page in store", err);
+        console.error("Failed to fetch artist page", err);
+        currentContext = null;
+        set({ playbackContext: null });
       }
+    } else if (currentContext?.type === "album") {
+      // Albums do not paginate. Clear context to allow Radio hand-off.
+      currentContext = null;
+      set({ playbackContext: null });
     }
 
-    // 5. Handle Loop All fallback
-    if (loopMode === "all") {
-      set({ currentIndex: 0, isPlaying: true });
-      const t = get().queue[0];
-      if (t) {
-        get().addToHistory(t);
-      }
-      return;
-    }
-
-    // 6. Handle AI Radio Mode (End of Queue)
-    const { isRadioMode, fetchRadioTracks } = get();
-    if (isRadioMode) {
-      await fetchRadioTracks();
+    // 5. Handle AI Radio Mode (Fallback when queue is empty AND context is cleared)
+    if (get().isRadioMode && !currentContext) {
+      await get().fetchRadioTracks();
 
       const freshQueue = get().queue;
       if (currentIndex < freshQueue.length - 1) {
@@ -276,12 +264,14 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
           isPlaying: true,
           playbackContext: null,
         });
-        const t = get().queue[currentIndex + 1];
-        if (t) {
-          get().addToHistory(t);
-        }
         return;
       }
+    }
+
+    // 6. Handle Loop All
+    if (loopMode === "all") {
+      set({ currentIndex: 0, isPlaying: true });
+      return;
     }
 
     // 7. Truly the end
