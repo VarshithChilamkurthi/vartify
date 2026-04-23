@@ -32,11 +32,29 @@ function getSearchItems(payload: unknown): unknown[] {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get("query") || "Attack on Titan";
-    const page = Number(searchParams.get("page")) || "1";
+    const language = searchParams.get("language")?.trim() ?? "";
+    const queryParam = searchParams.get("query")?.trim() ?? "";
+    const langLower = language.toLowerCase();
+    let query: string;
+    if (!queryParam) {
+      query =
+        langLower === "telugu"
+          ? "telugu latest albums"
+          : language
+            ? `${language} hits`
+            : "Attack on Titan";
+    } else if (langLower === "telugu" && queryParam.toLowerCase() === "telugu") {
+      query = "telugu latest albums";
+    } else {
+      query = queryParam;
+    }
+    const page = Number(searchParams.get("page")) || 1;
     const limit = 50;
-    
-    const payload = await fetchSaavn(`/search/albums?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+
+    const langSuffix = language ? `&language=${encodeURIComponent(language)}` : "";
+    const payload = await fetchSaavn(
+      `/search/albums?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}${langSuffix}`
+    );
     const items = getSearchItems(payload);
     const albums = items.map(mapAlbumSearchItem).filter((album): album is NonNullable<typeof album> => album !== null);
 

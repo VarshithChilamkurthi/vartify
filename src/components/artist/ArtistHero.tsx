@@ -38,6 +38,7 @@ export function ArtistHero({ artist, songs }: ArtistHeroProps) {
     if (!songs.length) {
       return;
     }
+    usePlayerStore.getState().setShuffle(false);
     playQueue(songs, 0, { type: "artist", id: artist.id, page: 1 });
     setPlaying(true);
   };
@@ -46,6 +47,7 @@ export function ArtistHero({ artist, songs }: ArtistHeroProps) {
     if (!songs.length) {
       return;
     }
+    usePlayerStore.getState().setShuffle(true);
     const shuffled = [...songs].sort(() => Math.random() - 0.5);
     playQueue(shuffled, 0, { type: "artist", id: artist.id, page: 1 });
     setPlaying(true);

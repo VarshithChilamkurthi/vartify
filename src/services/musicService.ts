@@ -64,14 +64,23 @@ function resolveInternalBaseUrl(isServer: boolean): string {
   return `http://localhost:${port}`;
 }
 
-export async function getAlbums(query?: string): Promise<{
+export async function getAlbums(query?: string, language?: string): Promise<{
   albums: Album[];
   hasMore: boolean;
 }> {
-  const suffix = query?.trim()
-    ? `?query=${encodeURIComponent(query)}`
-    : "";
-  return fetchJson<{ albums: Album[]; hasMore: boolean }>(`/api/albums${suffix}`);
+  const params = new URLSearchParams();
+  const q = query?.trim() ?? "";
+  const lang = language?.trim() ?? "";
+  if (q) {
+    params.set("query", q);
+  }
+  if (lang) {
+    params.set("language", lang);
+  } else if (q.toLowerCase() === "telugu") {
+    params.set("language", "telugu");
+  }
+  const qs = params.toString();
+  return fetchJson<{ albums: Album[]; hasMore: boolean }>(`/api/albums${qs ? `?${qs}` : ""}`);
 }
 
 export async function getAlbumById(id: string): Promise<Album> {
@@ -110,10 +119,16 @@ export async function getJumpBackInAlbums(): Promise<{ albums: Album[] }> {
   return fetchJson<{ albums: Album[] }>("/api/home/jump-back-in");
 }
 
-export async function getNewReleases(): Promise<{ albums: Album[] }> {
-  return fetchJson<{ albums: Album[] }>("/api/home/new-releases");
+export async function getNewReleases(language?: string): Promise<{ albums: Album[] }> {
+  const trimmed = language?.trim() || "telugu";
+  return fetchJson<{ albums: Album[] }>(
+    `/api/home/new-releases?language=${encodeURIComponent(trimmed)}`
+  );
 }
 
-export async function getRecommendations(): Promise<{ albums: Album[] }> {
-  return fetchJson<{ albums: Album[] }>("/api/home/recommendations");
+export async function getRecommendations(language?: string): Promise<{ albums: Album[] }> {
+  const trimmed = language?.trim() || "telugu";
+  return fetchJson<{ albums: Album[] }>(
+    `/api/home/recommendations?language=${encodeURIComponent(trimmed)}`
+  );
 }

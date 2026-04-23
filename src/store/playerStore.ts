@@ -12,12 +12,15 @@ type PlayerState = {
   queue: Track[];
   currentIndex: number;
   isPlaying: boolean;
+  isAutoplay: boolean;
   volume: number;
   isExpanded: boolean;
   isShuffle: boolean;
   loopMode: "off" | "all" | "one";
   isQueueOpen: boolean;
+  isRadioMode: boolean;
   playbackContext: PlaybackContext | null;
+  recentTracks: Track[];
 };
 
 type PlayerActions = {
@@ -37,8 +40,13 @@ type PlayerActions = {
   appendQueue: (songs: Track[]) => void;
   setPlaybackContext: (context: PlaybackContext | null) => void;
   toggleShuffle: () => void;
+  setShuffle: (isShuffle: boolean) => void;
   cycleLoopMode: () => void;
   toggleQueue: () => void;
+  toggleAutoplay: () => void;
+  toggleRadioMode: () => void;
+  fetchRadioTracks: () => Promise<void>;
+  addToHistory: (track: Track) => void;
 };
 
 function clampVolume(v: number): number {
@@ -49,12 +57,22 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
   queue: [],
   currentIndex: -1,
   isPlaying: false,
+  isAutoplay: true,
   volume: 1,
   isExpanded: false,
   isShuffle: false,
-  loopMode: "all",
+  loopMode: "off",
   isQueueOpen: false,
+  isRadioMode: true,
   playbackContext: null,
+  recentTracks: [],
+
+  addToHistory: (track) => {
+    set((state) => {
+      const filtered = state.recentTracks.filter((t) => t.id !== track.id);
+      return { recentTracks: [track, ...filtered].slice(0, 20) };
+    });
+  },
 
   toggleExpanded: () => {
     set((s) => ({ isExpanded: !s.isExpanded }));
@@ -70,6 +88,37 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
 
   toggleQueue: () => {
     set((s) => ({ isQueueOpen: !s.isQueueOpen }));
+  },
+
+  toggleAutoplay: () => {
+    set((s) => ({ isAutoplay: !s.isAutoplay }));
+  },
+
+  fetchRadioTracks: async () => {
+    const { queue, currentIndex } = get();
+    if (currentIndex < 0 || !queue.length) {
+      return;
+    }
+    const seedTrack = queue[currentIndex];
+    if (!seedTrack) {
+      return;
+    }
+    const historyIds = queue.map((t) => t.id);
+    try {
+      const res = await fetch("/api/radio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seedTrack, historyIds }),
+      });
+      const data = (await res.json()) as { songs?: Track[] };
+      const newSongs = data.songs?.filter((s) => s?.id) ?? [];
+      if (!newSongs.length) {
+        return;
+      }
+      set((state) => ({ queue: [...state.queue, ...newSongs] }));
+    } catch (err) {
+      console.error("Failed to fetch AI radio tracks", err);
+    }
   },
 
   setCurrentIndex: (index) => {
@@ -116,10 +165,15 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
       isPlaying: true,
       playbackContext: context || null,
     });
+    const t = songs[safeIndex];
+    if (t) {
+      get().addToHistory(t);
+    }
   },
 
   playTrack: (track) => {
     set({ queue: [track], currentIndex: 0, isPlaying: true, playbackContext: null });
+    get().addToHistory(track);
   },
 
   togglePlay: () => {
@@ -131,16 +185,16 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
   },
 
   next: async () => {
-    const { queue, currentIndex, isShuffle, loopMode, playbackContext, appendSongs, setPlaybackContext } = get();
-    
+    const { queue, currentIndex, isShuffle, loopMode, playbackContext } = get();
+
     if (!queue.length) return;
-  
+
     // 1. Handle Loop One
     if (loopMode === "one") {
       set({ isPlaying: true });
       return;
     }
-  
+
     // 2. Handle Shuffle
     if (isShuffle && queue.length > 1) {
       let nextIndex = currentIndex;
@@ -148,51 +202,101 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
         nextIndex = Math.floor(Math.random() * queue.length);
       }
       set({ currentIndex: nextIndex, isPlaying: true });
+      const q = get().queue;
+      const t = q[nextIndex];
+      if (t) {
+        get().addToHistory(t);
+      }
       return;
     }
-  
+
     // 3. Handle Normal Next
     if (currentIndex < queue.length - 1) {
       set({ currentIndex: currentIndex + 1, isPlaying: true });
+
+      const t = get().queue[currentIndex + 1];
+      if (t) {
+        get().addToHistory(t);
+      }
+
+      // AI Radio Look-ahead Trigger (Fetch even if in an album/artist context)
+      const remainingSongs = queue.length - 1 - (currentIndex + 1);
+      if (remainingSongs <= 2 && get().isRadioMode) {
+        get().fetchRadioTracks().catch(console.error);
+      }
       return;
     }
-  
+
     // 4. THE FIX: Handle End of Queue + Pagination
     if (playbackContext?.type === "artist") {
       try {
         const nextPage = playbackContext.page + 1;
         const res = await fetch(`/api/artist/${encodeURIComponent(playbackContext.id)}/songs?page=${nextPage}`);
         const data = await res.json();
-  
+
         if (data.songs?.length) {
           // We update the queue AND move to the next song in one go
+          const nextIndex = currentIndex + 1;
           set({
             queue: [...queue, ...data.songs],
-            currentIndex: currentIndex + 1,
+            currentIndex: nextIndex,
             playbackContext: { ...playbackContext, page: nextPage },
-            isPlaying: true
+            isPlaying: true,
           });
+          const t = get().queue[nextIndex];
+          if (t) {
+            get().addToHistory(t);
+          }
           return;
         }
       } catch (err) {
         console.error("Failed to fetch next page in store", err);
       }
     }
-  
+
     // 5. Handle Loop All fallback
     if (loopMode === "all") {
       set({ currentIndex: 0, isPlaying: true });
+      const t = get().queue[0];
+      if (t) {
+        get().addToHistory(t);
+      }
       return;
     }
-  
-    // 6. Truly the end
-    set({ isPlaying: false });
+
+    // 6. Handle AI Radio Mode (End of Queue)
+    const { isRadioMode, fetchRadioTracks } = get();
+    if (isRadioMode) {
+      await fetchRadioTracks();
+
+      const freshQueue = get().queue;
+      if (currentIndex < freshQueue.length - 1) {
+        set({
+          currentIndex: currentIndex + 1,
+          isPlaying: true,
+          playbackContext: null,
+        });
+        const t = get().queue[currentIndex + 1];
+        if (t) {
+          get().addToHistory(t);
+        }
+        return;
+      }
+    }
+
+    // 7. Truly the end
+    set({ isPlaying: false, playbackContext: null });
   },
 
   prev: () => {
     const { currentIndex } = get();
     if (currentIndex > 0) {
-      set({ currentIndex: currentIndex - 1, isPlaying: true });
+      const prevIndex = currentIndex - 1;
+      set({ currentIndex: prevIndex, isPlaying: true });
+      const t = get().queue[prevIndex];
+      if (t) {
+        get().addToHistory(t);
+      }
     } else {
       set({ currentIndex: 0, isPlaying: true });
     }
@@ -204,6 +308,14 @@ export const usePlayerStore = create<PlayerState & PlayerActions>((set, get) => 
 
   toggleShuffle: () => {
     set((s) => ({ isShuffle: !s.isShuffle }));
+  },
+
+  setShuffle: (val) => {
+    set({ isShuffle: val });
+  },
+
+  toggleRadioMode: () => {
+    set((s) => ({ isRadioMode: !s.isRadioMode }));
   },
 
   cycleLoopMode: () => {

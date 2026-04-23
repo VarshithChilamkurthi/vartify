@@ -32,9 +32,20 @@ function getSearchItems(payload: unknown): unknown[] {
   return [];
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const payload = await fetchSaavn("/search/albums?query=trending&page=1&limit=12");
+    const language = new URL(request.url).searchParams.get("language")?.trim() ?? "";
+    const langLower = language.toLowerCase();
+    const searchQuery =
+      langLower === "telugu"
+        ? "trending telugu"
+        : language
+          ? `trending ${language}`
+          : "trending";
+    const langSuffix = language ? `&language=${encodeURIComponent(language)}` : "";
+    const payload = await fetchSaavn(
+      `/search/albums?query=${encodeURIComponent(searchQuery)}&page=1&limit=12${langSuffix}`
+    );
     const items = getSearchItems(payload);
     const albums = items
       .map(mapAlbumSearchItem)

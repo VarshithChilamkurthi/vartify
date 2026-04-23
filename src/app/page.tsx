@@ -3,15 +3,12 @@ import type { Album, Track } from "@/lib/types/music";
 import { getAlbums } from "@/services/musicService";
 import { HomeHero } from "@/components/browse/HomeHero";
 import { getSongs } from "@/services/musicService";
-import {
-  getJumpBackInAlbums,
-  getNewReleases,
-  getRecommendations,
-} from "@/services/musicService";
+import { getNewReleases, getRecommendations } from "@/services/musicService";
 import { getGreeting } from "@/utils/greeting";
 import { HorizontalScroll } from "@/components/ui/HorizontalScroll";
 import { ArtistCard } from "@/components/browse/ArtistCard";
 import { AlbumCard } from "@/components/browse/AlbumCard";
+import { JumpBackInClient } from "@/components/home/JumpBackInClient";
 
 type ArtistItem = {
   id: string;
@@ -42,21 +39,17 @@ function getFavoriteArtistsFromSongs(
 
 export default async function Page() {
   let albums: Album[] = [];
-  let jumpBackInAlbums: Album[] = [];
   let newReleaseAlbums: Album[] = [];
   let recommendationAlbums: Album[] = [];
   let errorMessage: string | null = null;
 
   try {
-    const [albumRes, jumpBackInRes, newReleasesRes, recommendationsRes] =
-      await Promise.all([
-        getAlbums(),
-        getJumpBackInAlbums(),
-        getNewReleases(),
-        getRecommendations(),
-      ]);
+    const [albumRes, newReleasesRes, recommendationsRes] = await Promise.all([
+      getAlbums("telugu", "telugu"),
+      getNewReleases("telugu"),
+      getRecommendations("telugu"),
+    ]);
     albums = albumRes.albums;
-    jumpBackInAlbums = jumpBackInRes.albums;
     newReleaseAlbums = newReleasesRes.albums;
     recommendationAlbums = recommendationsRes.albums;
   } catch (err) {
@@ -151,15 +144,7 @@ export default async function Page() {
               </section>
             )}
 
-            {jumpBackInAlbums.length > 0 ? (
-              <HorizontalScroll title="Jump Back In">
-                {jumpBackInAlbums.map((album) => (
-                  <div key={album.id} className="w-[180px] shrink-0">
-                    <AlbumCard album={album} />
-                  </div>
-                ))}
-              </HorizontalScroll>
-            ) : null}
+            <JumpBackInClient />
 
             {newReleaseAlbums.length > 0 ? (
               <HorizontalScroll title="New Releases">

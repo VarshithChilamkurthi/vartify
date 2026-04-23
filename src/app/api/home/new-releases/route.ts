@@ -32,10 +32,19 @@ function getSearchItems(payload: unknown): unknown[] {
   return [];
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const language = new URL(request.url).searchParams.get("language")?.trim() ?? "";
+    const langLower = language.toLowerCase();
+    const searchQuery =
+      langLower === "telugu"
+        ? "latest telugu"
+        : language
+          ? `latest ${language}`
+          : "latest";
+    const langSuffix = language ? `&language=${encodeURIComponent(language)}` : "";
     const payload = await fetchSaavn(
-      "/search/albums?query=new%20releases&page=1&limit=12"
+      `/search/albums?query=${encodeURIComponent(searchQuery)}&page=1&limit=12${langSuffix}`
     );
     const items = getSearchItems(payload);
     const albums = items

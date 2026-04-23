@@ -5,6 +5,7 @@ export type Track = {
   audioUrl: string;
   artist?: string;
   image?: string;
+  language?: string;
 };
 
 export type Album = {

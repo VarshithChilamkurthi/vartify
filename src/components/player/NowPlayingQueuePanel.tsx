@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Radio, X } from "lucide-react";
 
 import { selectCurrentTrack, usePlayerStore } from "@/store/playerStore";
 
@@ -11,6 +11,8 @@ export function NowPlayingQueuePanel() {
   const currentTrack = usePlayerStore(selectCurrentTrack);
   const playQueue = usePlayerStore((s) => s.playQueue);
   const toggleQueue = usePlayerStore((s) => s.toggleQueue);
+  const isRadioMode = usePlayerStore((s) => s.isRadioMode);
+  const toggleRadioMode = usePlayerStore((s) => s.toggleRadioMode);
 
   const nextTracks = queue.slice(currentIndex + 1);
 
@@ -60,7 +62,21 @@ export function NowPlayingQueuePanel() {
         ) : null}
 
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-white/85">Next Up</h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-white">Next in Queue</h3>
+            <button
+              type="button"
+              onClick={toggleRadioMode}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                isRadioMode
+                  ? "border-[#1DB954] bg-[#1DB954]/10 text-[#1DB954]"
+                  : "border-white/20 text-white/60 hover:text-white"
+              }`}
+            >
+              <Radio size={14} />
+              {isRadioMode ? "Autoplay On" : "Autoplay Off"}
+            </button>
+          </div>
           <div className="space-y-1">
             {nextTracks.length ? (
               nextTracks.map((track, idx) => {
