@@ -13,35 +13,39 @@ type SongRowProps = {
 };
 
 export function SongRow({ track, onPlay }: SongRowProps) {
-  const playQueue = usePlayerStore((state) => state.playQueue);
-  const setPlaying = usePlayerStore((state) => state.setPlaying);
   const currentTrack = usePlayerStore(selectCurrentTrack);
   const isActive = currentTrack?.id === track.id;
 
-  const playTrack = () => {
+  const handleTrackPlay = () => {
     if (onPlay) {
       onPlay();
       return;
     }
-    playQueue([track], 0);
-    setPlaying(true);
+
+    // 1. Play ONLY the clicked track (this wipes the queue clean to 1 song)
+    usePlayerStore.getState().playTrack(track);
+
+    // 2. Ensure Radio Mode is active so AI suggestions start immediately after this song
+    if (!usePlayerStore.getState().isRadioMode) {
+      usePlayerStore.getState().toggleRadioMode();
+    }
   };
 
   const handlePlayClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    playTrack();
+    handleTrackPlay();
   };
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={playTrack}
+      onClick={handleTrackPlay}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          playTrack();
+          handleTrackPlay();
         }
       }}
       className="group/row flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-white/5"

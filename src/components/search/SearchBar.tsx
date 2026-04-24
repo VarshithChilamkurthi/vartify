@@ -50,7 +50,6 @@ export function SearchBar() {
   const [loading, setLoading] = useState<boolean>(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const [artistProfileImage, setArtistProfileImage] = useState<string | undefined>(undefined);
-  const playQueue = usePlayerStore((s) => s.playQueue);
 
   const getCleanArtist = (rawArtist: string) => rawArtist.split(",")[0].trim();
 
@@ -214,7 +213,16 @@ export function SearchBar() {
                   router.push(`/artist/${encodeURIComponent(topArtistId)}`);
                 } else {
                   const songIndex = activeIndex - offset;
-                  playQueue(results, songIndex);
+                  const track = results[songIndex];
+                  if (track) {
+                    // 1. Play ONLY the clicked track (this wipes the queue clean to 1 song)
+                    usePlayerStore.getState().playTrack(track);
+
+                    // 2. Ensure Radio Mode is active so AI suggestions start immediately after this song
+                    if (!usePlayerStore.getState().isRadioMode) {
+                      usePlayerStore.getState().toggleRadioMode();
+                    }
+                  }
                 }
                 setQuery("");
                 setResults([]);
@@ -294,7 +302,14 @@ export function SearchBar() {
         key={song.id}
         onMouseEnter={() => setActiveIndex(index + offset)}
         onClick={() => {
-          playQueue(results, index);
+          // 1. Play ONLY the clicked track (this wipes the queue clean to 1 song)
+          usePlayerStore.getState().playTrack(song);
+
+          // 2. Ensure Radio Mode is active so AI suggestions start immediately after this song
+          if (!usePlayerStore.getState().isRadioMode) {
+            usePlayerStore.getState().toggleRadioMode();
+          }
+
           setQuery("");
           setResults([]);
           setActiveIndex(-1);

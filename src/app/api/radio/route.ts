@@ -125,6 +125,11 @@ function normalizeHistoryIds(value: unknown): Set<string> {
   );
 }
 
+function normalizeSongName(name: string): string {
+  // Removes text inside parentheses (e.g., "Song Name (From 'Movie')") and removes all non-alphanumeric characters
+  return name.toLowerCase().replace(/\([^)]*\)/g, "").replace(/[^a-z0-9]/g, "");
+}
+
 const ai = new GoogleGenAI({});
 
 export async function POST(request: Request) {
@@ -192,12 +197,20 @@ Return ONLY a valid JSON array containing exactly 5 string queries. Do not inclu
     }
 
     // 3. FETCH SONGS FROM JIOSAAVN
-    // If we only have 1 query (Fallback), fetch 30 songs to survive deduplication. If AI (5 queries), fetch 2 per query.
-    const fetchLimit = searchQueries.length === 1 ? 30 : 2;
+    // Forcefully append the language to the query so JioSaavn strictly filters it
+    const finalQueries = searchQueries.map((q) => {
+      if (seedLanguage && !q.toLowerCase().includes(seedLanguage.toLowerCase())) {
+        return `${q} ${seedLanguage}`;
+      }
+      return q;
+    });
+
+    const fetchLimit = finalQueries.length === 1 ? 30 : 3; // Fetch a few extra per query to survive heavy deduplication
 
     const outcomes = await Promise.allSettled(
-      searchQueries.map((query) =>
-        fetchSaavn(`/search/songs?query=${encodeURIComponent(query)}&limit=${fetchLimit}&page=0`)
+      finalQueries.map((query) =>
+        // Use page=1 instead of page=0 to avoid JioSaavn's occasionally buggy zero-index behavior
+        fetchSaavn(`/search/songs?query=${encodeURIComponent(query)}&limit=${fetchLimit}&page=1`)
       )
     );
 
@@ -216,11 +229,21 @@ Return ONLY a valid JSON array containing exactly 5 string queries. Do not inclu
 
     let tracks = processOutcomes(outcomes);
 
-    // 4. DEDUPLICATION
-    const seen = new Set<string>();
+    // 4. DEDUPLICATION (By ID and Normalized Name)
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+
+    // Seed the sets with the current track so we never play it again, even under a different album ID
+    if (seedName) seenNames.add(normalizeSongName(seedName));
+
     let deduplicatedTracks = tracks.filter((t) => {
-      if (historySet.has(t.id) || seen.has(t.id)) return false;
-      seen.add(t.id);
+      if (historySet.has(t.id) || seenIds.has(t.id)) return false;
+
+      const normalized = normalizeSongName(t.name);
+      if (seenNames.has(normalized)) return false; // Catches exact same song from a compilation album
+
+      seenIds.add(t.id);
+      seenNames.add(normalized);
       return true;
     });
 
@@ -239,10 +262,12 @@ Return ONLY a valid JSON array containing exactly 5 string queries. Do not inclu
       const emergencyItems = getSearchItems(emergencyRes);
       for (const item of emergencyItems) {
         const track = mapSongSearchItemToTrack(item);
-        if (track && !historySet.has(track.id) && !seen.has(track.id)) {
-          seen.add(track.id);
-          deduplicatedTracks.push(track);
-        }
+        if (!track || historySet.has(track.id) || seenIds.has(track.id)) continue;
+        const normalized = normalizeSongName(track.name);
+        if (seenNames.has(normalized)) continue;
+        seenIds.add(track.id);
+        seenNames.add(normalized);
+        deduplicatedTracks.push(track);
       }
     }
 
